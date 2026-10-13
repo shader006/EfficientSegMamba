@@ -1,0 +1,43 @@
+# ==============================================================================
+# Requirements for EfficientSegMamba
+# Recommended Environment: Python 3.10+, CUDA 11.8 or 12.x, PyTorch >= 2.2.0
+# ==============================================================================
+
+# Core Deep Learning Framework
+torch>=2.2.0
+torchvision>=0.17.0
+torchaudio>=2.2.0
+
+# Sequence Modeling & Mamba Hardware Acceleration (requires CUDA C++ compilation)
+ninja
+causal_conv1d>=1.4.0
+mamba_ssm>=2.2.0
+
+# Medical Image Computing
+monai>=1.3.0
+nibabel>=5.2.0
+SimpleITK>=2.3.0
+MedPy>=0.4.0
+batchgenerators>=0.25
+connected-components-3d>=3.18.0
+acvl_utils>=0.2.0
+
+# Computer Vision & General ML
+scikit-learn>=1.4.0
+scikit-image>=0.22.0
+scipy>=1.12.0
+numpy>=1.24.0,<2.3.0
+pandas>=2.1.0
+einops>=0.7.0
+timm>=0.9.12
+segmentation_models_pytorch>=0.3.3
+
+# Utilities & Visualization
+matplotlib>=3.8.0
+seaborn>=0.13.0
+tqdm>=4.66.0
+PyYAML>=6.0.1
+pydantic>=2.5.0
+wandb>=0.16.0
+click>=8.1.0
+rich>=13.7.0

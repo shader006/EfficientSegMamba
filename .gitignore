@@ -1,0 +1,64 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions & build artifacts
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyTorch Checkpoints & Large Model Weights
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.onnx
+checkpoints/
+
+# Datasets & Medical Volume Files
+*.nii
+*.nii.gz
+*.dcm
+*.npy
+*.npz
+*.h5
+*.hdf5
+data/
+raw_data/
+fullres/
+
+# Logs & Experiment Tracking
+logs/
+wandb/
+runs/
+*.log
+terminal.log
+
+# Predictions & Evaluation outputs
+prediction_results/
+predictions/
+output/
+vis_output/
+
+# OS & Editor specific files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.codex/
