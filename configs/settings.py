@@ -41,7 +41,15 @@ SEGMAMBA_3D_CONV = False       # False: Use Pseudo-3D (P3D: (1x3x3) + (3x1x1)) c
 SEGMAMBA_RES_BLOCK = True      # Enable residual connections
 SEGMAMBA_KAN = False           # Standard B-spline KAN
 SEGMAMBA_SKAN = True           # Shifted Softplus KAN (SKAN) for parameter-efficient boundary modeling
-SEGMAMBA_KAN_MORTON_Z = True   # 3D Morton Z-order space-filling curve tokenization
+
+# Token scanning / spatial ordering mode:
+# Choices:
+#   - "mortonZ": Single-branch 3D space-filling Morton Z-order curve token scanning
+#   - "raster_scan": Single-branch 1D sequential raster scan (D x H x W)
+#   - "tri_directional": 3 parallel orthogonal scan branches along 3 axes (D, W, H) with raster scan
+SEGMAMBA_SCAN_MODE = "mortonZ"  # choices: "mortonZ", "raster_scan", "tri_directional"
+SEGMAMBA_KAN_MORTON_Z = (SEGMAMBA_SCAN_MODE == "mortonZ")   # 3D Morton Z-order space-filling curve tokenization
+
 SEGMAMBA_ONSAMPLING = True     # Adaptive Onsampling Decoder
 SEGMAMBA_MAMBA_STAGES = [0, 1, 2]
 ADVANCED_SEGMAMBA_MAMBA_IMPL = "mamba3"  # Tri-directional State Space Model (TSmamba+)

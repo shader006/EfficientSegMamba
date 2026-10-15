@@ -128,6 +128,7 @@ class SegMamba(nn.Module):
         groupkan_channel_group=None,
         groupkan_spatial_mixer=None,
         kan_morton_z_enabled=None,
+        scan_mode=None,
         use_unet_3d_conv=None,
         use_settings: bool = True,
     ) -> None:
@@ -178,15 +179,41 @@ class SegMamba(nn.Module):
             if groupkan_spatial_mixer is not None
             else _setting_or_default(settings, "SEGMAMBA_GROUPKAN_SPATIAL_MIXER", "pseudo3d")
         )
-        kan_morton_z_enabled = (
-            kan_morton_z_enabled
-            if kan_morton_z_enabled is not None
-            else _setting_or_default(settings, "SEGMAMBA_KAN_MORTON_Z", False)
-        )
+
+        mamba_impl = _setting_or_default(settings, "ADVANCED_SEGMAMBA_MAMBA_IMPL", "mamba1")
+
+        # Resolve scan mode: "mortonZ", "raster_scan", or "tri_directional"
+        raw_scan_mode = scan_mode if scan_mode is not None else _setting_or_default(settings, "SEGMAMBA_SCAN_MODE", None)
+        if raw_scan_mode is not None:
+            sm = str(raw_scan_mode).strip().lower()
+            if sm in {"mortonz", "morton_z", "morton"}:
+                self.scan_mode = "mortonZ"
+                kan_morton_z_enabled = True
+            elif sm in {"raster_scan", "raster", "single_raster", "single"}:
+                self.scan_mode = "raster_scan"
+                kan_morton_z_enabled = False
+            elif sm in {"tri_directional", "tri_axis", "3_branches", "tri_raster", "tri"}:
+                self.scan_mode = "tri_directional"
+                kan_morton_z_enabled = False
+            else:
+                self.scan_mode = str(raw_scan_mode)
+                kan_morton_z_enabled = bool(kan_morton_z_enabled) if kan_morton_z_enabled is not None else False
+        else:
+            kan_morton_z_enabled = (
+                kan_morton_z_enabled
+                if kan_morton_z_enabled is not None
+                else _setting_or_default(settings, "SEGMAMBA_KAN_MORTON_Z", False)
+            )
+            if kan_morton_z_enabled:
+                self.scan_mode = "mortonZ"
+            elif str(mamba_impl).lower() in {"mamba", "mamba1", "simple"}:
+                self.scan_mode = "tri_directional"
+            else:
+                self.scan_mode = "raster_scan"
+
         spatial_dims = spatial_dims if spatial_dims is not None else _setting_or_default(settings, "SEGMAMBA_SPATIAL_DIMS", 3)
         input_size = input_size if input_size is not None else _setting_or_default(settings, "INPUT_SIZE", [128, 128, 128])
         mamba_stages = mamba_stages if mamba_stages is not None else _setting_or_default(settings, "SEGMAMBA_MAMBA_STAGES", [0, 1, 2, 3])
-        mamba_impl = _setting_or_default(settings, "ADVANCED_SEGMAMBA_MAMBA_IMPL", "mamba1")
         mamba_impl_lower = str(mamba_impl).lower()
         if mamba_impl_lower == "mamba3":
             mamba3_d_state = _setting_or_default(settings, "ADVANCED_SEGMAMBA_MAMBA3_D_STATE", 64)
@@ -249,6 +276,7 @@ class SegMamba(nn.Module):
             mamba3_outproj_norm_enabled=self.mamba3_outproj_norm_enabled,
             mamba_impl=mamba_impl,
             morton_z_enabled=self.kan_morton_z_enabled,
+            scan_mode=self.scan_mode,
         )
         self.encoder1 = _make_encoder_block(
             use_unet_3d_conv=self.use_unet_3d_conv,

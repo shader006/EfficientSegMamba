@@ -169,12 +169,37 @@ class MambaLayer(nn.Module):
         mamba3_outproj_norm_enabled=False,
         mamba_impl="mamba1",
         morton_z_enabled=False,
+        scan_mode=None,
     ):
         super().__init__()
         self.dim = dim
         self.norm = nn.LayerNorm(dim)
         self.mamba_impl = str(mamba_impl).lower()
-        self.morton_z_enabled = bool(morton_z_enabled)
+
+        # Resolve scan mode: "mortonZ", "raster_scan", or "tri_directional"
+        if scan_mode is not None:
+            sm = str(scan_mode).strip().lower()
+            if sm in {"mortonz", "morton_z", "morton"}:
+                self.scan_mode = "mortonZ"
+                self.morton_z_enabled = True
+            elif sm in {"raster_scan", "raster", "single_raster", "single"}:
+                self.scan_mode = "raster_scan"
+                self.morton_z_enabled = False
+            elif sm in {"tri_directional", "tri_axis", "3_branches", "tri_raster", "tri"}:
+                self.scan_mode = "tri_directional"
+                self.morton_z_enabled = False
+            else:
+                self.scan_mode = str(scan_mode)
+                self.morton_z_enabled = bool(morton_z_enabled)
+        else:
+            self.morton_z_enabled = bool(morton_z_enabled)
+            if self.morton_z_enabled:
+                self.scan_mode = "mortonZ"
+            elif self.mamba_impl in {"mamba", "mamba1", "simple"}:
+                self.scan_mode = "tri_directional"
+            else:
+                self.scan_mode = "raster_scan"
+
         self._morton_cache = {}
         if self.mamba_impl == "mamba3":
             self.mamba = Mamba3(
@@ -274,7 +299,7 @@ class MambaLayer(nn.Module):
 
     def forward(self, x):
         x_skip = x
-        if self.mamba_impl in {"mamba", "mamba1", "simple"}:
+        if self.scan_mode in {"tri_directional", "tri_axis", "3_branches", "tri_raster", "tri"}:
             from einops import rearrange
             out_x_1 = self._mamba_forward(x)
 
@@ -290,6 +315,9 @@ class MambaLayer(nn.Module):
             out = out + x_skip
             return out
         else:
+            # Single-path scanning:
+            # - "mortonZ": single-path 3D space-filling Morton Z-curve ordering
+            # - "raster_scan": single-path 1D sequential raster scan
             out = self._mamba_forward(x)
             out = out + x_skip
             return out
@@ -310,6 +338,7 @@ class TSMambaLayer(nn.Module):
         mamba3_outproj_norm_enabled=False,
         mamba_impl="mamba1",
         morton_z_enabled=False,
+        scan_mode=None,
     ):
         super().__init__()
         self.gsc = GSC(dim, mamba_impl=mamba_impl)
@@ -325,6 +354,7 @@ class TSMambaLayer(nn.Module):
             mamba3_outproj_norm_enabled=mamba3_outproj_norm_enabled,
             mamba_impl=mamba_impl,
             morton_z_enabled=morton_z_enabled,
+            scan_mode=scan_mode,
         )
         self.norm = LayerNorm(dim, eps=1e-6, data_format="channels_first")
         self.mlp = MlpChannel(dim, mlp_ratio * dim)
@@ -363,6 +393,7 @@ class MambaEncoder(nn.Module):
         mamba3_outproj_norm_enabled=False,
         mamba_impl="mamba1",
         morton_z_enabled=False,
+        scan_mode=None,
     ):
         super().__init__()
 
@@ -406,6 +437,7 @@ class MambaEncoder(nn.Module):
                         mamba3_outproj_norm_enabled=mamba3_outproj_norm_enabled,
                         mamba_impl=mamba_impl,
                         morton_z_enabled=morton_z_enabled,
+                        scan_mode=scan_mode,
                     )
                     if block_cls is TSMambaLayer
                     else block_cls(dim=dims[i])
