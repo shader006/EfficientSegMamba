@@ -21,16 +21,6 @@ While State Space Models (SSMs) like Mamba have established linear-time sequence
 4. **Adaptive Onsampling Decoder**: Replaces conventional Transposed Convolutions with content-aware dynamic upsampling kernels.
 5. **Tri-directional Mamba (TSmamba+)**: Captures forward, backward, and cross-axis spatial dependencies with linear memory complexity.
 
-### 📊 Efficiency & Accuracy Trade-off (BraTS 2023 Test Set)
-
-| Model Variant | WT Dice (%) | TC Dice (%) | ET Dice (%) | Mean Dice (%) | FLOPs (G) | Params (M) | Compute Efficiency (Dice / GFLOP) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **V0: SegMamba (Baseline)** | 90.96 | 90.04 | 86.83 | 89.28 | 1588 | 62.19 | 0.06 |
-| **V1: + P3D Bottleneck** | 90.92 | 89.87 | 86.72 | 89.17 | 319 | 21.10 | 0.28 |
-| **V2: + Adaptive Onsampling** | 90.76 | 89.81 | 86.68 | 89.08 | 275 | 18.90 | 0.32 |
-| **V3: + Shifted Softplus KAN** | 90.54 | 89.70 | 86.79 | 89.01 | 266 | 11.56 | 0.33 |
-| **V4: EfficientSegMamba (Ours)** | **90.88** | **89.70** | **87.14** | **89.24** | **286** *(**-82%**)* | **11.51** *(**-81%**)* | **0.31** *(**5.2x**)* |
-
 ---
 
 ## 🛠️ Environment and Dependencies
