@@ -1,0 +1,72 @@
+[
+  {
+    "format": "npy",
+    "description": "Uncompressed .npy (+ mmap_mode='r' patch)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 51.95106863975525,
+    "compression_ratio": 0.999995300565871,
+    "write_ms_mean": 140.97472978755832,
+    "full_read_ms_mean": 66.49427744559944,
+    "full_read_ms_median": 79.37808986753225,
+    "patch_read_ms_mean": 17.43082042473058,
+    "patch_read_ms_median": 7.344282232224941
+  },
+  {
+    "format": "npz",
+    "description": "Compressed .npz (np.savez_compressed)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 12.857901573181152,
+    "compression_ratio": 4.040381255327745,
+    "write_ms_mean": 2998.576412908733,
+    "full_read_ms_mean": 432.9234707014014,
+    "full_read_ms_median": 412.6464771106839,
+    "patch_read_ms_mean": 438.45093126098317,
+    "patch_read_ms_median": 403.0331615358591
+  },
+  {
+    "format": "b2nd",
+    "description": "Blosc2 .b2nd (ZSTD level 3, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 17.93672239780426,
+    "compression_ratio": 2.8963387706490824,
+    "write_ms_mean": 4723.956030327827,
+    "full_read_ms_mean": 537.1779120371988,
+    "full_read_ms_median": 504.3697524815798,
+    "patch_read_ms_mean": 204.24094415890673,
+    "patch_read_ms_median": 197.44490925222635
+  },
+  {
+    "format": "h5_raw",
+    "description": "HDF5 .h5 (uncompressed, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 114.76554107666016,
+    "compression_ratio": 0.4526691898261392,
+    "write_ms_mean": 428.7285665050149,
+    "full_read_ms_mean": 181.87944303887585,
+    "full_read_ms_median": 182.80888255685568,
+    "patch_read_ms_mean": 46.68935566830138,
+    "patch_read_ms_median": 21.45550586283207
+  },
+  {
+    "format": "h5_lzf",
+    "description": "HDF5 .h5 (LZF compressed, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 18.374579191207886,
+    "compression_ratio": 2.8273205039704186,
+    "write_ms_mean": 1354.315604781732,
+    "full_read_ms_mean": 857.2119063076874,
+    "full_read_ms_median": 802.9531091451645,
+    "patch_read_ms_mean": 391.65431874183315,
+    "patch_read_ms_median": 321.7970971018076
+  }
+]

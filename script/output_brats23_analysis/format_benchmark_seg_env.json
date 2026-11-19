@@ -1,0 +1,72 @@
+[
+  {
+    "format": "npy",
+    "description": "Uncompressed .npy (+ mmap_mode='r' patch)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 51.95106863975525,
+    "compression_ratio": 0.999995300565871,
+    "write_ms_mean": 129.21338016167283,
+    "full_read_ms_mean": 74.84955449278156,
+    "full_read_ms_median": 88.03041093051434,
+    "patch_read_ms_mean": 48.83009102195501,
+    "patch_read_ms_median": 42.458188720047474
+  },
+  {
+    "format": "npz",
+    "description": "Compressed .npz (np.savez_compressed)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 12.857901573181152,
+    "compression_ratio": 4.040381255327745,
+    "write_ms_mean": 2912.6728954724967,
+    "full_read_ms_mean": 437.425800676768,
+    "full_read_ms_median": 406.8668130785227,
+    "patch_read_ms_mean": 462.2648445268472,
+    "patch_read_ms_median": 404.15353048592806
+  },
+  {
+    "format": "h5_raw",
+    "description": "HDF5 .h5 (uncompressed, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 114.76554107666016,
+    "compression_ratio": 0.4526691898261392,
+    "write_ms_mean": 312.9614903591573,
+    "full_read_ms_mean": 130.2652485513439,
+    "full_read_ms_median": 105.50257377326488,
+    "patch_read_ms_mean": 40.963686148946486,
+    "patch_read_ms_median": 19.215846434235573
+  },
+  {
+    "format": "h5_lzf",
+    "description": "HDF5 .h5 (LZF compressed, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 18.374579191207886,
+    "compression_ratio": 2.8273205039704186,
+    "write_ms_mean": 1364.470427390188,
+    "full_read_ms_mean": 853.0488667699198,
+    "full_read_ms_median": 800.6057040765882,
+    "patch_read_ms_mean": 363.35612654996413,
+    "patch_read_ms_median": 315.7742451876402
+  },
+  {
+    "format": "zarr",
+    "description": "Zarr .zarr (Blosc default, chunk 64\u00b3)",
+    "n_cases": 8,
+    "n_repeat": 3,
+    "raw_ram_mb_mean": 51.95082449913025,
+    "disk_mb_mean": 21.368634462356567,
+    "compression_ratio": 2.431171939912581,
+    "write_ms_mean": 786.9370565749705,
+    "full_read_ms_mean": 261.9724917070319,
+    "full_read_ms_median": 269.7606598958373,
+    "patch_read_ms_mean": 95.94987363864978,
+    "patch_read_ms_median": 97.20245748758316
+  }
+]

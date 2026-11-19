@@ -1,0 +1,50 @@
+{
+  "data_dir": "/home/cuc.buithi/BRATS/all/data",
+  "n_cases": 10,
+  "n_repeat": 3,
+  "patch_size": 128,
+  "results": {
+    "RAM cache slice (patch)": {
+      "n_cases": 10,
+      "mean_ms": 10.259,
+      "median_ms": 10.419,
+      "std_ms": 0.515,
+      "total_s": 0.1026
+    },
+    "NFS .npy mmap (patch)": {
+      "n_cases": 10,
+      "mean_ms": 17.372,
+      "median_ms": 16.821,
+      "std_ms": 1.661,
+      "total_s": 0.1737
+    },
+    "NFS .npy full read": {
+      "n_cases": 10,
+      "mean_ms": 28.905,
+      "median_ms": 23.436,
+      "std_ms": 19.672,
+      "total_s": 0.2891
+    },
+    "/dev/shm .npy mmap (patch)": {
+      "n_cases": 10,
+      "mean_ms": 13.238,
+      "median_ms": 12.983,
+      "std_ms": 1.059,
+      "total_s": 0.1324
+    },
+    "/dev/shm .npy full read": {
+      "n_cases": 10,
+      "mean_ms": 34.141,
+      "median_ms": 18.682,
+      "std_ms": 33.301,
+      "total_s": 0.3414
+    },
+    "NFS .npz compressed (full)": {
+      "n_cases": 10,
+      "mean_ms": 506.032,
+      "median_ms": 510.782,
+      "std_ms": 79.015,
+      "total_s": 5.0603
+    }
+  }
+}
