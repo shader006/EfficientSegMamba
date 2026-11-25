@@ -3,8 +3,8 @@
 """
 High-throughput PyTorch Dataset & DataLoader for preprocessed BraTS 2023 GLI (.npy + .pkl).
 
-Reads directly from `/home/cuc.buithi/BRATS/all/data` and the patient-level split JSON
-`/home/cuc.buithi/BRATS/all/script/output_brats23_analysis/brats23_patient_split_70_10_20.json`.
+Reads directly from `data/` and the patient-level split JSON
+`script/output_brats23_analysis/brats23_patient_split_70_10_20.json`.
 
 Key features:
 1. Two fast I/O backends (guided by our `io_benchmark.md`):
@@ -33,6 +33,7 @@ tempfile.tempdir = "/tmp"
 import argparse
 import json
 import pickle
+import random
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -46,10 +47,10 @@ from scipy.ndimage import gaussian_filter
 from torch.utils.data import DataLoader, Dataset
 
 
-DEFAULT_DATA_DIR = Path("/home/cuc.buithi/BRATS/all/data")
-DEFAULT_SPLIT_JSON = Path(
-    "/home/cuc.buithi/BRATS/all/script/output_brats23_analysis/brats23_patient_split_70_10_20.json"
-)
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_DATA_DIR = ALL_DIR.parent / "data"
+DEFAULT_SPLIT_JSON = SCRIPT_DIR / "output_brats23_analysis" / "brats23_patient_split_70_10_20.json"
 
 
 def parse_patient_id(case_id: str) -> str:
@@ -159,6 +160,7 @@ class BraTS23PreprocessedDataset(Dataset):
         self.aug_mode = aug_mode
         self.modality_dropout_prob = float(modality_dropout_prob)
         self.seed = int(seed)
+        self._rng = np.random.default_rng(self.seed)
 
         if cache_mode not in ("mmap", "ram"):
             raise ValueError(f"cache_mode must be 'mmap' or 'ram', got '{cache_mode}'")
@@ -438,7 +440,7 @@ class BraTS23PreprocessedDataset(Dataset):
             meta = self._load_meta(entry["pkl_path"])
 
         if self.is_train:
-            rng = np.random.default_rng()
+            rng = self._rng
             spatial_shape = tuple(int(s) for s in img_full.shape[1:])
             x0, y0, z0 = self._choose_crop_start(spatial_shape, meta, rng)
             px, py, pz = self.patch_size
@@ -478,8 +480,17 @@ class BraTS23PreprocessedDataset(Dataset):
 
 
 def _worker_init_fn(_worker_id: int) -> None:
-    """Prevent PyTorch OpenMP thread oversubscription inside DataLoader workers."""
+    """Prevent OpenMP oversubscription and seed per-worker RNG deterministically."""
     torch.set_num_threads(1)
+    base_seed = torch.initial_seed()
+    worker_seed = base_seed % (2**32)
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    worker_info = torch.utils.data.get_worker_info()
+    if worker_info is not None:
+        ds = getattr(worker_info.dataset, "dataset", worker_info.dataset)
+        if hasattr(ds, "_rng"):
+            ds._rng = np.random.default_rng(base_seed)
 
 
 def build_dataloaders(
@@ -495,8 +506,10 @@ def build_dataloaders(
     modality_dropout_prob: float = 0.0,
     fold: int = 0,
     pin_memory: bool = True,
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    """Create patient-disjoint train, val, and test DataLoaders."""
+    seed: int = 42,
+    include_test: bool = True,
+) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
+    """Create patient-disjoint train, val, and optional test DataLoaders."""
     data_dir = Path(data_dir)
     split_json = Path(split_json)
 
@@ -525,17 +538,11 @@ def build_dataloaders(
         cache_mode=cache_mode,
         aug_mode=aug_mode,
         modality_dropout_prob=modality_dropout_prob,
+        seed=seed,
     )
     val_ds = BraTS23PreprocessedDataset(
         data_dir=data_dir,
         case_ids=val_ids,
-        is_train=False,
-        label_mode=label_mode,
-        cache_mode=cache_mode,
-    )
-    test_ds = BraTS23PreprocessedDataset(
-        data_dir=data_dir,
-        case_ids=test_ids if has_test else val_ids,
         is_train=False,
         label_mode=label_mode,
         cache_mode=cache_mode,
@@ -547,9 +554,28 @@ def build_dataloaders(
         "persistent_workers": num_workers > 0,
         "worker_init_fn": _worker_init_fn if num_workers > 0 else None,
     }
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True, **loader_kwargs)
+    train_generator = torch.Generator()
+    train_generator.manual_seed(int(seed))
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        generator=train_generator,
+        **loader_kwargs,
+    )
     val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, **loader_kwargs)
-    test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, **loader_kwargs)
+
+    test_loader: Optional[DataLoader] = None
+    if include_test:
+        test_ds = BraTS23PreprocessedDataset(
+            data_dir=data_dir,
+            case_ids=test_ids if has_test else val_ids,
+            is_train=False,
+            label_mode=label_mode,
+            cache_mode=cache_mode,
+        )
+        test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, **loader_kwargs)
     return train_loader, val_loader, test_loader
 
 

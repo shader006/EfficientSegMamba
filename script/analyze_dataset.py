@@ -39,15 +39,11 @@ from scipy import ndimage, stats
 from tqdm import tqdm
 
 
-DEFAULT_DATA_DIR = (
-    "/home/cuc.buithi/BRATS/BraTS2023_TrainVal/"
-    "ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
-)
-DEFAULT_OUTPUT_DIR = "/home/cuc.buithi/BRATS/all/script/output_brats23_analysis"
-DEFAULT_SPLIT_JSON = (
-    "/home/cuc.buithi/BRATS/all/script/output_brats23_analysis/"
-    "brats23_patient_split_70_10_20.json"
-)
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_DATA_DIR = str(ALL_DIR.parent / "ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData")
+DEFAULT_OUTPUT_DIR = str(SCRIPT_DIR / "output_brats23_analysis")
+DEFAULT_SPLIT_JSON = str(SCRIPT_DIR / "output_brats23_analysis" / "brats23_patient_split_70_10_20.json")
 
 MODALITIES = ("t1n", "t1c", "t2w", "t2f")
 RAW_LABELS = {0: "BG", 1: "NCR", 2: "ED", 3: "ET"}

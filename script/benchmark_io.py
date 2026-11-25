@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Self-contained I/O speed benchmark for preprocessed data inside `/home/cuc.buithi/BRATS/all/data`.
+Self-contained I/O speed benchmark for preprocessed data inside `data/`.
 
 Compares reading modes on the same BraTS 2023 GLI cases:
 1. RAM cache slice (128x128x128 patch from in-memory array)
@@ -30,8 +30,10 @@ from typing import Any, Callable, Dict, List, Tuple
 import numpy as np
 
 
-DEFAULT_DATA_DIR = Path("/home/cuc.buithi/BRATS/all/data")
-DEFAULT_OUT_DIR = Path("/home/cuc.buithi/BRATS/all/script/output_brats23_analysis")
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_DATA_DIR = ALL_DIR.parent / "data"
+DEFAULT_OUT_DIR = SCRIPT_DIR / "output_brats23_analysis"
 
 
 def collect_cases(data_dir: Path, n_cases: int) -> List[Tuple[Path, Path, Path]]:

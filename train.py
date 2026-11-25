@@ -21,7 +21,7 @@ Examples:
     python train.py --run-name segmamba_brats23_baseline
 
     # 4. Resume from checkpoint:
-    python train.py --resume /home/cuc.buithi/BRATS/all/runs/segmamba_brats23_baseline/checkpoints/last_model.pt
+    python train.py --resume runs/segmamba_brats23_baseline/checkpoints/last_model.pt
 """
 
 from __future__ import annotations
@@ -106,6 +106,7 @@ def make_dataloaders(args: argparse.Namespace) -> tuple[DataLoader, DataLoader]:
             cache_mode=args.cache_mode,
             aug_mode=args.aug_mode,
             modality_dropout_prob=settings.MODALITY_DROPOUT_PROB,
+            seed=settings.REPRO_SEED,
         )
         val_ds = BraTS23PreprocessedDataset(
             data_dir=args.data_dir,
@@ -120,7 +121,15 @@ def make_dataloaders(args: argparse.Namespace) -> tuple[DataLoader, DataLoader]:
             "persistent_workers": args.num_workers > 0,
             "worker_init_fn": _worker_init_fn if args.num_workers > 0 else None,
         }
-        train_loader = DataLoader(train_ds, batch_size=min(args.batch_size, len(ids)), shuffle=True, **kw)
+        train_gen = torch.Generator()
+        train_gen.manual_seed(int(settings.REPRO_SEED))
+        train_loader = DataLoader(
+            train_ds,
+            batch_size=min(args.batch_size, len(ids)),
+            shuffle=True,
+            generator=train_gen,
+            **kw,
+        )
         val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, **kw)
         return train_loader, val_loader
 
@@ -136,6 +145,8 @@ def make_dataloaders(args: argparse.Namespace) -> tuple[DataLoader, DataLoader]:
         fg_prob=args.fg_prob,
         modality_dropout_prob=settings.MODALITY_DROPOUT_PROB,
         fold=args.fold,
+        seed=settings.REPRO_SEED,
+        include_test=False,
     )
     return train_loader, val_loader
 
@@ -247,11 +258,16 @@ def validate(
         with torch.amp.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
             logits = inferer(images, model)
 
+        if label_mode == "multiclass":
+            preds_cpu = logits.argmax(dim=1).to(dtype=torch.uint8).cpu()
+        else:
+            preds_cpu = (logits >= 0.0).cpu()
+
         batch_metrics = compute_batch_metrics(
-            logits.float().cpu(),
+            preds_cpu,
             labels,
             label_mode=label_mode,
-            from_logits=True,
+            from_logits=False,
             empty_hd95_penalty=settings.EMPTY_HD95_PENALTY,
             compute_hd95=compute_hd95,
         )

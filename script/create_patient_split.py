@@ -29,13 +29,11 @@ import pandas as pd
 from scipy import stats
 
 
-DEFAULT_DATA_ROOT = Path("/home/cuc.buithi/BRATS/BraTS2023_TrainVal")
-DEFAULT_OUTPUT_JSON = Path(
-    "/home/cuc.buithi/BRATS/all/script/output_brats23_analysis/brats23_patient_split_70_10_20.json"
-)
-DEFAULT_ANALYSIS_CSV = Path(
-    "/home/cuc.buithi/BRATS/all/script/output_brats23_analysis/per_case_analysis.csv"
-)
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_DATA_ROOT = ALL_DIR.parent
+DEFAULT_OUTPUT_JSON = SCRIPT_DIR / "output_brats23_analysis" / "brats23_patient_split_70_10_20.json"
+DEFAULT_ANALYSIS_CSV = SCRIPT_DIR / "output_brats23_analysis" / "per_case_analysis.csv"
 MODALITIES = ("t1n", "t1c", "t2w", "t2f")
 
 

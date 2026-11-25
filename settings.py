@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import LambdaLR
 # 1. Paths (self-contained inside `all/`)
 # =============================================================================
 ALL_DIR = Path(__file__).resolve().parent
-DATA_DIR = ALL_DIR / "data"
+DATA_DIR = ALL_DIR.parent / "data"
 SPLIT_JSON = ALL_DIR / "script" / "output_brats23_analysis" / "brats23_patient_split_70_10_20.json"
 RUNS_DIR = ALL_DIR / "runs"
 
@@ -37,7 +37,7 @@ CACHE_MODE = "ram"             # "ram" (~10 ms/case, uses ~55GB RAM) | "mmap" (~
 AUG_MODE = "strong"            # "strong" | "light" | "none"
 FG_PROB = 0.67                 # Probability of tumor-centered patch sampling
 MODALITY_DROPOUT_PROB = 0.0    # Keep 0.0 (disabled) for standard BraTS training
-NUM_WORKERS = 4
+NUM_WORKERS = 8
 FOLD = 0                       # Used only when SPLIT_JSON is a K-fold JSON
 
 
@@ -58,7 +58,7 @@ SEGMAMBA_DROP_PATH_RATE = 0.0
 # 4. Training & Precision
 # =============================================================================
 EPOCHS = 300
-BATCH_SIZE = 2
+BATCH_SIZE = 1
 VAL_EVERY = 1
 DEVICE = "cuda:0"
 AMP_ENABLED = False
@@ -106,7 +106,7 @@ HD95_TIEBREAK_TOLERANCE = 0.002  # Among top-K within this Dice margin of best, 
 # 8. Reproducibility
 # =============================================================================
 REPRO_SEED = 42
-DETERMINISTIC = True
+DETERMINISTIC = False
 DETERMINISTIC_WARN_ONLY = True
 TF32_ENABLED = True
 
@@ -148,7 +148,9 @@ def build_optimizer(
     """Create optimizer according to settings."""
     name = optimizer_name.lower()
     if name == "adamw":
-        return torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+        params = list(model.parameters())
+        use_fused = torch.cuda.is_available() and bool(params) and all(p.is_cuda for p in params)
+        return torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay, fused=use_fused)
     if name == "adam":
         return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     if name == "sgd":

@@ -38,11 +38,10 @@ import numpy as np
 from tqdm import tqdm
 
 
-DEFAULT_DATA_DIR = Path(
-    "/home/cuc.buithi/BRATS/BraTS2023_TrainVal/"
-    "ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
-)
-DEFAULT_OUTPUT_DIR = Path("/home/cuc.buithi/BRATS/all/data")
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_DATA_DIR = ALL_DIR.parent / "ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+DEFAULT_OUTPUT_DIR = ALL_DIR.parent / "data"
 DEFAULT_MODALITIES = ("t1n", "t1c", "t2w", "t2f")
 
 

@@ -32,9 +32,11 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 
-DEFAULT_SOURCE_DIR = Path("/home/cuc.buithi/BRATS/data/fullres/train")
-DEFAULT_WORK_DIR = Path("/home/cuc.buithi/BRATS/all/script/_bench_tmp")
-DEFAULT_OUT_DIR = Path("/home/cuc.buithi/BRATS/all/script/output_brats23_analysis")
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALL_DIR = SCRIPT_DIR.parent
+DEFAULT_SOURCE_DIR = ALL_DIR.parent / "data"
+DEFAULT_WORK_DIR = SCRIPT_DIR / "_bench_tmp"
+DEFAULT_OUT_DIR = SCRIPT_DIR / "output_brats23_analysis"
 
 ALL_FORMATS = ("npy", "npz", "b2nd", "h5_raw", "h5_lzf", "zarr", "pt", "lmdb")
 
@@ -558,6 +560,8 @@ def main() -> int:
     for cid, img_p, seg_p in src_cases:
         img = np.load(img_p)
         seg = np.load(seg_p)
+        if seg.ndim == 3:
+            seg = seg[None, ...]
         loaded_cases.append((cid, img, seg))
         case_patches[cid] = compute_patch_slices(img.shape, args.patch_size, rng)
 
