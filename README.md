@@ -12,6 +12,7 @@ Self-contained training, preprocessing, dataset analysis, and evaluation pipelin
 ├── losses.py                    # MONAI DiceCELoss wrapper supporting `multiclass` (4-class) and `regions` (WT/TC/ET)
 ├── train.py                     # Training & validation pipeline (Top-K saving, train.log, history.csv, ETA)
 ├── select_best_checkpoint.py    # Post-training Top-K validation selector (Dice + HD95 tie-break)
+├── evaluate.py                  # Test/val evaluation with Dice & HD95 summary, optional TTA & NIfTI export
 ├── model/
 │   ├── __init__.py
 │   ├── segmamba.py              # Official SegMamba 3D architecture (~67.42M params)
@@ -136,3 +137,17 @@ python select_best_checkpoint.py --run-dir runs/segmamba_brats23_baseline --cach
 ```
 
 Outputs `checkpoints/best_model_selected.pt`, `val_topk_selection.json`, and `val_topk_selection.csv`.
+
+### 5. Test-Set Evaluation
+
+Evaluate the selected checkpoint (automatically resolves `best_model_selected.pt`, falling back to `best_model.pt` / `last_model.pt`) on the `test` split with BraTS WT/TC/ET/Mean Dice & HD95:
+
+```bash
+# Standard evaluation
+python evaluate.py --run-dir runs/segmamba_brats23_baseline --cache-mode mmap
+
+# With 8-view flip TTA and uncropped .nii.gz prediction export
+python evaluate.py --run-dir runs/segmamba_brats23_baseline --cache-mode mmap --tta --save-nii
+```
+
+Outputs `per_case_metrics.csv`, `summary.json`, and (when `--save-nii` is set) `predictions/<case_id>.nii.gz` inside `runs/<run_name>/eval_test_<ckpt_stem>/`.
