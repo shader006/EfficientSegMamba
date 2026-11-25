@@ -126,6 +126,16 @@ def apply_saved_settings(ckpt: Dict[str, Any], run_dir: Optional[Path]) -> Dict[
         "SEGMAMBA_HIDDEN_SIZE",
         "SEGMAMBA_NORM_NAME",
         "SEGMAMBA_DROP_PATH_RATE",
+        "EFFICIENT_SEGMAMBA_DEPTHS",
+        "SEGMAMBA_MAMBA_STAGES",
+        "SEGMAMBA_3D_CONV",
+        "SEGMAMBA_SKAN",
+        "SEGMAMBA_KAN",
+        "SEGMAMBA_ONSAMPLING",
+        "SEGMAMBA_FUE",
+        "SEGMAMBA_GSC_PLUS",
+        "ADVANCED_SEGMAMBA_MAMBA_IMPL",
+        "SEGMAMBA_SCAN_MODE",
         "EMPTY_HD95_PENALTY",
     )
     for key in model_keys:

@@ -1,4 +1,4 @@
-"""TSMamba encoder blocks (GSC, MambaLayer with Mamba1/2/3 + MortonZ, TSMambaLayer, MambaEncoder)."""
+"""TSMamba encoder blocks (GSC, GSCPlus, MambaLayer with Mamba1/2/3 + MortonZ, TSMambaLayer, MambaEncoder)."""
 
 from __future__ import annotations
 
@@ -58,41 +58,45 @@ EnvMamba, Mamba2, Mamba3 = _import_advanced_mamba_classes()
 
 
 class GSC(nn.Module):
-    """Gated Spatial Convolution block used prior to Mamba token scanning."""
+    """Standard Gated Spatial Convolution (GSC) matching `SegMamba`."""
 
-    def __init__(self, in_channles: int, mamba_impl: str = "mamba1") -> None:
+    def __init__(self, in_channles: int) -> None:
         super().__init__()
-        self.mamba_impl = str(mamba_impl).lower()
+        self.proj = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
+        self.norm = nn.InstanceNorm3d(in_channles)
+        self.nonliner = nn.ReLU()
 
-        if self.mamba_impl == "mamba3":
-            self.proj = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
-            self.norm = nn.InstanceNorm3d(in_channles)
-            self.nonliner = nn.ReLU()
+        self.proj2 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
+        self.norm2 = nn.InstanceNorm3d(in_channles)
+        self.nonliner2 = nn.ReLU()
 
-            self.proj2 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
-            self.norm2 = nn.InstanceNorm3d(in_channles)
-            self.nonliner2 = nn.ReLU()
+        self.proj3 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
+        self.norm3 = nn.InstanceNorm3d(in_channles)
+        self.nonliner3 = nn.ReLU()
 
-            self.proj3 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
-            self.norm3 = nn.InstanceNorm3d(in_channles)
-            self.nonliner3 = nn.ReLU()
-
-            self.proj4 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
-            self.norm4 = nn.InstanceNorm3d(in_channles)
-            self.nonliner4 = nn.ReLU()
-        else:
-            self.conv3 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
-            self.conv1 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
-            self.out_conv3 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
+        self.proj4 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
+        self.norm4 = nn.InstanceNorm3d(in_channles)
+        self.nonliner4 = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.mamba_impl == "mamba3":
-            x_residual = x
-            x1 = self.nonliner(self.norm(self.proj(x)))
-            x1 = self.nonliner2(self.norm2(self.proj2(x1)))
-            x2 = self.nonliner3(self.norm3(self.proj3(x)))
-            x = self.nonliner4(self.norm4(self.proj4(x1 + x2)))
-            return x + x_residual
+        x_residual = x
+        x1 = self.nonliner(self.norm(self.proj(x)))
+        x1 = self.nonliner2(self.norm2(self.proj2(x1)))
+        x2 = self.nonliner3(self.norm3(self.proj3(x)))
+        x = self.nonliner4(self.norm4(self.proj4(x1 + x2)))
+        return x + x_residual
+
+
+class GSCPlus(nn.Module):
+    """GSC+ multiplicative-gating spatial convolution (`conv3(x) * conv1(x)` -> `out_conv3`)."""
+
+    def __init__(self, in_channles: int) -> None:
+        super().__init__()
+        self.conv3 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
+        self.conv1 = nn.Conv3d(in_channles, in_channles, 1, 1, 0)
+        self.out_conv3 = nn.Conv3d(in_channles, in_channles, 3, 1, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x + self.out_conv3(self.conv3(x) * self.conv1(x))
 
 
@@ -202,7 +206,7 @@ class MambaLayer(nn.Module):
                 "expand": expand,
             }
             if "bimamba_type" in sig.parameters:
-                mamba_kwargs["bimamba_type"] = "none"
+                mamba_kwargs["bimamba_type"] = "v3"
             if "nslices" in sig.parameters:
                 mamba_kwargs["nslices"] = num_slices
             self.mamba = mamba_cls(**mamba_kwargs)
@@ -297,9 +301,10 @@ class TSMambaLayer(nn.Module):
         mamba_impl: str = "mamba1",
         morton_z_enabled: bool = False,
         scan_mode: Optional[str] = None,
+        gsc_plus_enabled: bool = False,
     ) -> None:
         super().__init__()
-        self.gsc = GSC(dim, mamba_impl=mamba_impl)
+        self.gsc: nn.Module = GSCPlus(dim) if gsc_plus_enabled else GSC(dim)
         self.tom = MambaLayer(
             dim=dim,
             num_slices=num_slices,
@@ -344,6 +349,7 @@ class MambaEncoder(nn.Module):
         mamba_impl: str = "mamba1",
         morton_z_enabled: bool = False,
         scan_mode: Optional[str] = None,
+        gsc_plus_enabled: bool = False,
     ) -> None:
         super().__init__()
 
@@ -388,6 +394,7 @@ class MambaEncoder(nn.Module):
                         mamba_impl=mamba_impl,
                         morton_z_enabled=morton_z_enabled,
                         scan_mode=scan_mode,
+                        gsc_plus_enabled=gsc_plus_enabled,
                     )
                     if block_cls is TSMambaLayer
                     else block_cls(dim=dims[i])

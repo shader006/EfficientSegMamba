@@ -42,16 +42,28 @@ FOLD = 0                       # Used only when SPLIT_JSON is a K-fold JSON
 
 
 # =============================================================================
-# 3. Model (Official ge-xing/SegMamba)
+# 3. Model (Official ge-xing/SegMamba & EfficientSegMamba)
 # =============================================================================
-MODEL_NAME = "segmamba"
-IN_CHANS = 4                   # t1n, t1c, t2w, t2f
+MODEL_NAME = "efficient_segmamba"   # "segmamba" | "efficient_segmamba"
+IN_CHANS = 4                        # t1n, t1c, t2w, t2f
 OUT_CHANS = 4 if LABEL_MODE == "multiclass" else 3
 SEGMAMBA_DEPTHS = [2, 2, 2, 2]
 SEGMAMBA_FEAT_SIZE = [48, 96, 192, 384]
 SEGMAMBA_HIDDEN_SIZE = 768
 SEGMAMBA_NORM_NAME = "instance"
 SEGMAMBA_DROP_PATH_RATE = 0.0
+
+# EfficientSegMamba ablation toggles (currently P3D-only)
+EFFICIENT_SEGMAMBA_DEPTHS = [1, 1, 1, 1]
+SEGMAMBA_MAMBA_STAGES = [0, 1, 2]
+SEGMAMBA_3D_CONV = False            # False = P3D enabled | True = standard 3D UNETR Conv
+SEGMAMBA_SKAN = False               # TokenSKANPseudo3DBlock at encoder5/encoder6
+SEGMAMBA_KAN = False                # TokenKANPseudo3DBlock at encoder5/encoder6 & decoder5/decoder4
+SEGMAMBA_ONSAMPLING = False         # False = ConvTranspose3d | True = Onsampling
+SEGMAMBA_FUE = False                # False = nn.Identity | True = FUE skip gating
+SEGMAMBA_GSC_PLUS = False           # False = GSC (SegMamba) | True = GSC+ (GSCPlus)
+ADVANCED_SEGMAMBA_MAMBA_IMPL = "mamba1"   # "mamba1" | "mamba2" | "mamba3"
+SEGMAMBA_SCAN_MODE = "raster_scan"        # "raster_scan" | "mortonZ" | "tri_directional"
 
 
 # =============================================================================

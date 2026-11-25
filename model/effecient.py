@@ -2,10 +2,10 @@
 Efficient / Advanced SegMamba 3D architecture inside `all/model/`.
 
 Integrates the modular components split across `all/model/`:
-- `TSMamba.py`    : `MambaEncoder` (`Mamba3` / `Mamba2` / `Mamba1`, `GSC`, Morton Z-order scan)
+- `TSMamba.py`    : `MambaEncoder` (`Mamba3` / `Mamba2` / `Mamba1`, `GSC` / `GSCPlus` (`GSC+`), Morton Z-order scan)
 - `P3D.py`        : `Pseudo3DBottleneckBlock`, `Pseudo3DUpBlock`, `PWDWConv3D`
 - `Onsampling.py` : `Onsampling` dynamic content-aware 3D upsampling
-- `SKAN.py`       : `TokenSKANPseudo3DBlock`, `TokenKANPseudo3DBlock`, `TokenGroupKANPseudo3DBlock`
+- `SKAN.py`       : `TokenSKANPseudo3DBlock`, `TokenKANPseudo3DBlock`
 - `FUE.py`        : `FUE` (Feature Uncertainty Enhancement) skip-connection gating
 - `utils.py`      : `LayerNorm`, Morton Z-curve permutation, normalization & settings helpers
 """
@@ -29,12 +29,6 @@ from .P3D import (
     _make_encoder_block,
 )
 from .SKAN import (
-    GroupedKANActivation,
-    GroupedKANTransform,
-    KANLinear,
-    SKANLinear,
-    TokenGroupKANPseudo3DBlock,
-    TokenGroupKANPseudo3DUpBlock,
     TokenKANPseudo3DBlock,
     TokenKANPseudo3DUpBlock,
     TokenSKANPseudo3DBlock,
@@ -42,6 +36,7 @@ from .SKAN import (
 )
 from .TSMamba import (
     GSC,
+    GSCPlus,
     MambaEncoder,
     MambaLayer,
     MlpChannel,
@@ -79,14 +74,12 @@ class EfficientSegMamba(nn.Module):
         mamba_stages: Optional[Sequence[int]] = None,
         kan_enabled: Optional[bool] = None,
         skan_enabled: Optional[bool] = None,
-        groupkan_enabled: Optional[bool] = None,
-        groupkan_active_group: Optional[int] = None,
-        groupkan_channel_group: Optional[int] = None,
-        groupkan_spatial_mixer: Optional[str] = None,
         kan_morton_z_enabled: Optional[bool] = None,
         scan_mode: Optional[str] = None,
         use_unet_3d_conv: Optional[bool] = None,
         onsampling_enabled: Optional[bool] = None,
+        fue_enabled: Optional[bool] = None,
+        gsc_plus_enabled: Optional[bool] = None,
         mamba_impl: Optional[str] = None,
         use_settings: bool = True,
     ) -> None:
@@ -133,27 +126,6 @@ class EfficientSegMamba(nn.Module):
 
         kan_enabled = kan_enabled if kan_enabled is not None else _setting_or_default(settings, "SEGMAMBA_KAN", False)
         skan_enabled = skan_enabled if skan_enabled is not None else _setting_or_default(settings, "SEGMAMBA_SKAN", True)
-        groupkan_enabled = (
-            groupkan_enabled
-            if groupkan_enabled is not None
-            else _setting_or_default(settings, "SEGMAMBA_GROUPKAN", False)
-        )
-        groupkan_active_group = (
-            groupkan_active_group
-            if groupkan_active_group is not None
-            else _setting_or_default(settings, "SEGMAMBA_GROUPKAN_ACTIVE_GROUP", 16)
-        )
-        groupkan_channel_group = (
-            groupkan_channel_group
-            if groupkan_channel_group is not None
-            else _setting_or_default(settings, "SEGMAMBA_GROUPKAN_CHANNEL_GROUP", 16)
-        )
-        groupkan_spatial_mixer = (
-            groupkan_spatial_mixer
-            if groupkan_spatial_mixer is not None
-            else _setting_or_default(settings, "SEGMAMBA_GROUPKAN_SPATIAL_MIXER", "pseudo3d")
-        )
-
         mamba_impl = (
             mamba_impl
             if mamba_impl is not None
@@ -231,7 +203,19 @@ class EfficientSegMamba(nn.Module):
             if onsampling_enabled is not None
             else _setting_or_default(settings, "SEGMAMBA_ONSAMPLING", True)
         )
+        fue_enabled = (
+            fue_enabled
+            if fue_enabled is not None
+            else _setting_or_default(settings, "SEGMAMBA_FUE", True)
+        )
+        gsc_plus_enabled = (
+            gsc_plus_enabled
+            if gsc_plus_enabled is not None
+            else _setting_or_default(settings, "SEGMAMBA_GSC_PLUS", False)
+        )
         upsample_mode = "onsampling" if onsampling_enabled else "transconv"
+        self.fue_enabled = bool(fue_enabled)
+        self.gsc_plus_enabled = bool(gsc_plus_enabled)
 
         self.hidden_size = hidden_size
         self.in_chans = in_chans
@@ -245,10 +229,6 @@ class EfficientSegMamba(nn.Module):
         self.mamba_stages = list(mamba_stages)
         self.kan_enabled = bool(kan_enabled)
         self.skan_enabled = bool(skan_enabled)
-        self.groupkan_enabled = bool(groupkan_enabled)
-        self.groupkan_active_group = int(groupkan_active_group)
-        self.groupkan_channel_group = int(groupkan_channel_group)
-        self.groupkan_spatial_mixer = str(groupkan_spatial_mixer).lower()
         self.kan_morton_z_enabled = bool(kan_morton_z_enabled)
         self.use_unet_3d_conv = bool(use_unet_3d_conv)
         self.mamba3_mimo_enabled = bool(mamba3_mimo_enabled)
@@ -275,6 +255,7 @@ class EfficientSegMamba(nn.Module):
             mamba_impl=mamba_impl,
             morton_z_enabled=self.kan_morton_z_enabled,
             scan_mode=self.scan_mode,
+            gsc_plus_enabled=self.gsc_plus_enabled,
         )
 
         self.encoder1 = _make_encoder_block(
@@ -310,21 +291,9 @@ class EfficientSegMamba(nn.Module):
             res_block=res_block,
         )
 
-        use_token_kan = (self.groupkan_enabled or self.kan_enabled or self.skan_enabled) and not self.use_unet_3d_conv
-        late_encoder_kwargs: Dict[str, Any] = {}
+        use_token_kan = (self.kan_enabled or self.skan_enabled) and not self.use_unet_3d_conv
         if self.use_unet_3d_conv:
             late_encoder_block = None
-        elif self.groupkan_enabled:
-            late_encoder_block = TokenGroupKANPseudo3DBlock
-            groupkan_linear_cls = SKANLinear if self.skan_enabled else KANLinear
-            groupkan_linear_name = "SKANLinear_pure" if self.skan_enabled else "KANLinear"
-            late_encoder_kwargs = {
-                "active_group": self.groupkan_active_group,
-                "channel_group": self.groupkan_channel_group,
-                "spatial_mixer": self.groupkan_spatial_mixer,
-                "linear_cls": groupkan_linear_cls,
-                "linear_name": groupkan_linear_name,
-            }
         elif self.skan_enabled:
             late_encoder_block = TokenSKANPseudo3DBlock
         elif self.kan_enabled:
@@ -348,7 +317,6 @@ class EfficientSegMamba(nn.Module):
                 norm_name=norm_name,
                 res_block=res_block,
                 morton_z_enabled=self.kan_morton_z_enabled,
-                **late_encoder_kwargs,
             )
 
         self.bottleneck_downsample = nn.Sequential(
@@ -372,14 +340,11 @@ class EfficientSegMamba(nn.Module):
                 norm_name=norm_name,
                 res_block=res_block,
                 morton_z_enabled=self.kan_morton_z_enabled,
-                **late_encoder_kwargs,
             )
 
         # Matches advanced_model: when skan_enabled=True, decoder5/decoder4 use P3D + Onsampling.
         if use_token_kan and not self.skan_enabled:
-            decoder_block_cls = (
-                TokenGroupKANPseudo3DUpBlock if self.groupkan_enabled else TokenKANPseudo3DUpBlock
-            )
+            decoder_block_cls = TokenKANPseudo3DUpBlock
             self.decoder5 = decoder_block_cls(
                 spatial_dims=spatial_dims,
                 in_channels=self.hidden_size,
@@ -389,7 +354,6 @@ class EfficientSegMamba(nn.Module):
                 res_block=res_block,
                 upsample_mode=upsample_mode,
                 morton_z_enabled=self.kan_morton_z_enabled,
-                **late_encoder_kwargs,
             )
             self.decoder4 = decoder_block_cls(
                 spatial_dims=spatial_dims,
@@ -400,7 +364,6 @@ class EfficientSegMamba(nn.Module):
                 res_block=res_block,
                 upsample_mode=upsample_mode,
                 morton_z_enabled=self.kan_morton_z_enabled,
-                **late_encoder_kwargs,
             )
         else:
             self.decoder5 = _make_decoder_block(
@@ -450,12 +413,12 @@ class EfficientSegMamba(nn.Module):
             res_block=res_block,
         )
 
-        self.fue1 = FUE()
-        self.fue2 = FUE()
-        self.fue3 = FUE()
-        self.fue4 = FUE()
-        self.fue5 = FUE()
-        self.fue6 = FUE()
+        self.fue1 = FUE() if self.fue_enabled else nn.Identity()
+        self.fue2 = FUE() if self.fue_enabled else nn.Identity()
+        self.fue3 = FUE() if self.fue_enabled else nn.Identity()
+        self.fue4 = FUE() if self.fue_enabled else nn.Identity()
+        self.fue5 = FUE() if self.fue_enabled else nn.Identity()
+        self.fue6 = FUE() if self.fue_enabled else nn.Identity()
         self.out = UnetOutBlock(spatial_dims=spatial_dims, in_channels=self.feat_size[0], out_channels=self.out_chans)
 
     def forward(self, x_in: torch.Tensor) -> torch.Tensor:
@@ -486,13 +449,10 @@ __all__ = [
     "PWDWConv3D",
     "TokenKANPseudo3DBlock",
     "TokenSKANPseudo3DBlock",
-    "TokenGroupKANPseudo3DBlock",
     "TokenKANPseudo3DUpBlock",
     "TokenSKANPseudo3DUpBlock",
-    "TokenGroupKANPseudo3DUpBlock",
-    "GroupedKANActivation",
-    "GroupedKANTransform",
     "GSC",
+    "GSCPlus",
     "MambaLayer",
     "TSMambaLayer",
     "MambaEncoder",

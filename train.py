@@ -56,7 +56,7 @@ for p in (str(SCRIPT_DIR), str(ALL_DIR)):
 
 import settings  # noqa: E402
 from losses import build_loss  # noqa: E402
-from model import SegMamba  # noqa: E402
+from model import EfficientSegMamba, SegMamba  # noqa: E402
 from dataset import (  # noqa: E402
     BraTS23PreprocessedDataset,
     _worker_init_fn,
@@ -67,7 +67,7 @@ from metrics import aggregate_metrics, compute_batch_metrics  # noqa: E402
 
 
 def build_model(label_mode: str, device: torch.device) -> torch.nn.Module:
-    """Instantiate official SegMamba from `settings.py`."""
+    """Instantiate official SegMamba or EfficientSegMamba from `settings.py`."""
     out_chans = 4 if label_mode == "multiclass" else 3
     model_name = str(settings.MODEL_NAME).lower()
     if model_name == "segmamba":
@@ -79,6 +79,28 @@ def build_model(label_mode: str, device: torch.device) -> torch.nn.Module:
             drop_path_rate=settings.SEGMAMBA_DROP_PATH_RATE,
             hidden_size=settings.SEGMAMBA_HIDDEN_SIZE,
             norm_name=settings.SEGMAMBA_NORM_NAME,
+        )
+        return model.to(device)
+    if model_name in ("efficient_segmamba", "efficientsegmamba", "efficient"):
+        model = EfficientSegMamba(
+            in_chans=settings.IN_CHANS,
+            out_chans=out_chans,
+            depths=list(settings.EFFICIENT_SEGMAMBA_DEPTHS),
+            feat_size=list(settings.SEGMAMBA_FEAT_SIZE),
+            drop_path_rate=settings.SEGMAMBA_DROP_PATH_RATE,
+            hidden_size=settings.SEGMAMBA_HIDDEN_SIZE,
+            norm_name=settings.SEGMAMBA_NORM_NAME,
+            input_size=list(settings.INPUT_SIZE),
+            mamba_stages=list(settings.SEGMAMBA_MAMBA_STAGES),
+            kan_enabled=settings.SEGMAMBA_KAN,
+            skan_enabled=settings.SEGMAMBA_SKAN,
+            scan_mode=settings.SEGMAMBA_SCAN_MODE,
+            use_unet_3d_conv=settings.SEGMAMBA_3D_CONV,
+            onsampling_enabled=settings.SEGMAMBA_ONSAMPLING,
+            fue_enabled=settings.SEGMAMBA_FUE,
+            gsc_plus_enabled=settings.SEGMAMBA_GSC_PLUS,
+            mamba_impl=settings.ADVANCED_SEGMAMBA_MAMBA_IMPL,
+            use_settings=True,
         )
         return model.to(device)
     raise ValueError(f"Unsupported MODEL_NAME in settings.py: {settings.MODEL_NAME}")
