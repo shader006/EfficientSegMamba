@@ -16,6 +16,13 @@ Self-contained training, preprocessing, dataset analysis, and evaluation pipelin
 ├── model/
 │   ├── __init__.py
 │   ├── segmamba.py              # Official SegMamba 3D architecture (~67.42M params)
+│   ├── effecient.py             # Advanced EfficientSegMamba (~11.52M params: Mamba3 + MortonZ + P3D + Onsampling + SKAN + FUE)
+│   ├── P3D.py                   # Pseudo-3D bottleneck & decoder blocks
+│   ├── Onsampling.py            # Dynamic content-aware 3D upsampling
+│   ├── SKAN.py                  # Self-contained SKAN/KAN basis & Token-Pseudo3D blocks
+│   ├── FUE.py                   # Feature Uncertainty Enhancement skip-gating
+│   ├── TSMamba.py               # TSMamba encoder (GSC, Mamba1/2/3, MortonZ/raster/tri-directional scan)
+│   ├── utils.py                 # Shared LayerNorm, normalization & Morton Z-curve utilities
 │   └── mamba_ssm/               # Local Mamba SSM modules supporting bimamba_type="v3"
 └── script/
     ├── analyze_dataset.py       # Full 1,251-case NIfTI integrity, intensity, morphology & CCA analysis

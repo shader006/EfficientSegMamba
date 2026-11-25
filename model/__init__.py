@@ -8,5 +8,6 @@ if _MODEL_DIR not in sys.path:
     sys.path.insert(0, _MODEL_DIR)
 
 from .segmamba import SegMamba  # noqa: E402
+from .effecient import EfficientSegMamba  # noqa: E402
 
-__all__ = ["SegMamba"]
+__all__ = ["SegMamba", "EfficientSegMamba"]
